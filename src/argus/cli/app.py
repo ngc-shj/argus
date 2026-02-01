@@ -143,6 +143,13 @@ def scan(
     else:
         enabled_modules = ["dns", "whois", "ports", "crtsh"]  # Default modules
 
+    # Add email and ssl modules when AI analysis is enabled for complete security assessment
+    if analyze:
+        if "email" not in enabled_modules:
+            enabled_modules.append("email")
+        if "ssl" not in enabled_modules:
+            enabled_modules.append("ssl")
+
     try:
         scan_target = ScanTarget(domain=target if "." in target else None,
                                   ip_address=target if "." not in target or target.replace(".", "").isdigit() else None)
