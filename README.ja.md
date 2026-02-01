@@ -161,7 +161,7 @@ OPENAI_API_KEY=sk-your-key-here
 
 # Ollama設定（ローカルLLM用）
 OLLAMA_HOST=http://localhost:11434
-OLLAMA_MODEL=llama3.2
+OLLAMA_MODEL=gpt-oss:20b
 
 # データベース
 DATABASE_URL=sqlite+aiosqlite:///./argus.db
@@ -198,7 +198,7 @@ export ANTHROPIC_API_KEY=sk-ant-your-key
 uv run argus scan example.com --analyze --ai-provider anthropic
 ```
 
-包括的なリスク評価のために`claude-3-5-sonnet-20241022`を使用。
+包括的なリスク評価のために`claude-sonnet-4-20250514`を使用。
 
 ### OpenAI (GPT-4o)
 
@@ -214,7 +214,7 @@ uv run argus scan example.com --analyze --ai-provider openai
 ollama serve
 
 # モデルをプル
-ollama pull llama3.2
+ollama pull gpt-oss:20b
 
 # ローカルAIでスキャン実行
 uv run argus scan example.com --analyze --ai-provider ollama

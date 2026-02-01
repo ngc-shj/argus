@@ -23,7 +23,7 @@ class Settings(BaseSettings):
 
     # Ollama Configuration
     ollama_host: str = Field(default="http://localhost:11434")
-    ollama_model: str = Field(default="llama3.2")
+    ollama_model: str = Field(default="gpt-oss:20b")
 
     # Database
     database_url: str = Field(default="sqlite+aiosqlite:///./argus.db")

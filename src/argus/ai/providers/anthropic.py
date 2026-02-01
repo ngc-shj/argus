@@ -57,7 +57,7 @@ class AnthropicProvider(BaseAIProvider):
 
         try:
             message = await client.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-sonnet-4-20250514",
                 max_tokens=4096,
                 messages=[
                     {"role": "user", "content": prompt},
@@ -83,7 +83,7 @@ Focus on the most critical findings and recommendations.
 
         try:
             message = await client.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-sonnet-4-20250514",
                 max_tokens=1024,
                 messages=[
                     {"role": "user", "content": prompt},
@@ -126,7 +126,7 @@ Return ONLY the JSON object, no other text."""
 
         try:
             message = await client.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-sonnet-4-20250514",
                 max_tokens=2048,
                 messages=[
                     {"role": "user", "content": prompt},
