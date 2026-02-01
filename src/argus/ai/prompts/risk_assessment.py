@@ -10,6 +10,15 @@ Analyze the following reconnaissance scan results and provide a comprehensive se
 ## Scan Results (JSON)
 {results}
 
+## CRITICAL INSTRUCTIONS:
+
+**ONLY analyze data that is actually present in the Scan Results above.**
+- If a scan module result is null or missing, do NOT make assumptions about that category.
+- If email_result is null/missing, do NOT claim SPF/DKIM/DMARC are misconfigured - they simply weren't scanned.
+- If ssl_result is null/missing, do NOT make claims about SSL/TLS security.
+- Base your findings ONLY on evidence in the provided data.
+- Clearly distinguish between "not scanned" and "misconfigured".
+
 ## Your Analysis Should Include:
 
 1. **Executive Summary** (2-3 sentences)
@@ -21,7 +30,7 @@ Analyze the following reconnaissance scan results and provide a comprehensive se
    - Misconfigurations identified
    - Information disclosure issues
 
-3. **Risk Assessment**
+3. **Risk Assessment** (analyze only categories with available data)
    - DNS Security: Evaluate zone security, DNSSEC, subdomain exposure
    - Network Exposure: Open ports, exposed services, attack surface
    - Web Security: Missing headers, technology risks, version disclosure
