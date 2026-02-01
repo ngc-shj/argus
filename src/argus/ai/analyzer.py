@@ -216,7 +216,7 @@ class AIAnalyzer:
     def _get_model_name(self) -> str:
         """Get the model name for the current provider."""
         if self._provider_name == "anthropic":
-            return "claude-3-5-sonnet-20241022"
+            return "claude-sonnet-4-20250514"
         elif self._provider_name == "openai":
             return "gpt-4o"
         elif self._provider_name == "ollama":

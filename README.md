@@ -161,7 +161,7 @@ OPENAI_API_KEY=sk-your-key-here
 
 # Ollama Configuration (for local LLM)
 OLLAMA_HOST=http://localhost:11434
-OLLAMA_MODEL=llama3.2
+OLLAMA_MODEL=gpt-oss:20b
 
 # Database
 DATABASE_URL=sqlite+aiosqlite:///./argus.db
@@ -198,7 +198,7 @@ export ANTHROPIC_API_KEY=sk-ant-your-key
 uv run argus scan example.com --analyze --ai-provider anthropic
 ```
 
-Uses `claude-3-5-sonnet-20241022` for comprehensive risk assessment.
+Uses `claude-sonnet-4-20250514` for comprehensive risk assessment.
 
 ### OpenAI (GPT-4o)
 
@@ -214,7 +214,7 @@ uv run argus scan example.com --analyze --ai-provider openai
 ollama serve
 
 # Pull a model
-ollama pull llama3.2
+ollama pull gpt-oss:20b
 
 # Run scan with local AI
 uv run argus scan example.com --analyze --ai-provider ollama
@@ -249,8 +249,8 @@ uv run argus serve --reload                      # Development mode
 
 ### API Documentation
 
-- Swagger UI: <http://localhost:8000/docs>
-- ReDoc: <http://localhost:8000/redoc>
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
 
 ### Example
 
@@ -266,7 +266,7 @@ curl http://localhost:8000/api/v1/scans/{scan_id}/results
 
 ## Architecture
 
-```text
+```
 src/argus/
 ├── core/              # Configuration, logging, interfaces
 │   ├── config.py      # Settings management (pydantic-settings)
