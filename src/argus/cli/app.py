@@ -186,6 +186,13 @@ def scan(
             console.print(f"[red]Scan failed: {e}[/red]")
             raise typer.Exit(1) from None
 
+    # Save to database
+    try:
+        asyncio.run(_save_to_database(result))
+        console.print(f"[dim]Scan saved to database (ID: {result.id})[/dim]")
+    except Exception as e:
+        console.print(f"[yellow]Warning: Failed to save to database: {e}[/yellow]")
+
     # Output results
     if output:
         if str(output).endswith(".html"):
@@ -207,6 +214,25 @@ def scan(
 
     if not output and not html_report:
         _display_results(result, format_type)
+
+
+async def _save_to_database(result) -> None:
+    """Save scan result to database."""
+    from argus.database import init_db, get_session, ScanRepository
+
+    # Initialize database
+    await init_db()
+
+    # Save result
+    async with get_session() as db_session:
+        repo = ScanRepository(db_session)
+        # Check if record exists (unlikely for CLI, but handle it)
+        existing = await repo.get_by_id(result.id)
+        if existing:
+            await repo.update_from_session(result)
+        else:
+            await repo.create(result)
+            await repo.update_from_session(result)
 
 
 def _display_results(result, format_type: str) -> None:

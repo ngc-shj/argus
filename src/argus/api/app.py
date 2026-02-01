@@ -15,8 +15,17 @@ from argus.version import __version__
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Application lifespan handler."""
+    from argus.database import init_db, close_db
+
     setup_logging()
+
+    # Initialize database
+    await init_db()
+
     yield
+
+    # Close database connection
+    await close_db()
 
 
 app = FastAPI(
