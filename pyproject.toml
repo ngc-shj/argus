@@ -1,0 +1,112 @@
+[project]
+name = "argus"
+version = "0.1.0"
+description = "AI-powered attack surface reconnaissance tool - The all-seeing eye for your security"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [
+    {name = "ngc-shj"}
+]
+keywords = ["security", "reconnaissance", "dns", "whois", "scanning", "osint", "argus"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+]
+
+dependencies = [
+    # Core
+    "pydantic>=2.6.0",
+    "pydantic-settings>=2.2.0",
+
+    # Scanning
+    "dnspython>=2.6.0",
+    "asyncwhois>=1.1.0",
+    "httpx[http2]>=0.27.0",
+
+    # API
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "websockets>=14.0",
+
+    # CLI
+    "typer>=0.15.0",
+    "rich>=13.7.0",
+
+    # AI
+    "anthropic>=0.42.0",
+    "openai>=1.20.0",
+    "ollama>=0.4.0",
+
+    # Database
+    "sqlmodel>=0.0.22",
+    "aiosqlite>=0.20.0",
+    "alembic>=1.13.0",
+
+    # Infrastructure
+    "structlog>=24.1.0",
+    "aiolimiter>=1.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.1.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "mypy>=1.9.0",
+    "ruff>=0.8.0",
+    "pre-commit>=4.0.0",
+]
+
+[project.scripts]
+argus = "argus.cli.app:main"
+
+[project.urls]
+Homepage = "https://github.com/ngc-shj/argus"
+Repository = "https://github.com/ngc-shj/argus"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/argus"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # Pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "UP",   # pyupgrade
+    "S",    # flake8-bandit (security)
+]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.19.1",
+    "pytest>=9.0.2",
+    "ruff>=0.14.14",
+]
