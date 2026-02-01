@@ -45,6 +45,7 @@ class OpenAIProvider(BaseAIProvider):
         self,
         scan_results: dict[str, Any],
         prompt_template: str,
+        language: str = "English",
     ) -> str:
         """Run AI analysis using GPT."""
         client = self._get_client()
@@ -53,6 +54,7 @@ class OpenAIProvider(BaseAIProvider):
         prompt = prompt_template.format(
             context=context,
             results=json.dumps(scan_results, indent=2, default=str),
+            language=language,
         )
 
         try:
@@ -62,7 +64,7 @@ class OpenAIProvider(BaseAIProvider):
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a security analyst. Analyze the provided scan results and provide insights.",
+                        "content": f"You are a security analyst. Analyze the provided scan results and provide insights. Respond in {language}.",
                     },
                     {"role": "user", "content": prompt},
                 ],
@@ -76,7 +78,9 @@ class OpenAIProvider(BaseAIProvider):
                 provider=self.name,
             ) from e
 
-    async def summarize(self, text: str, max_length: int = 500) -> str:
+    async def summarize(
+        self, text: str, max_length: int = 500, language: str = "English"
+    ) -> str:
         """Generate summary using GPT."""
         client = self._get_client()
 
@@ -87,11 +91,11 @@ class OpenAIProvider(BaseAIProvider):
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a security analyst. Provide concise summaries.",
+                        "content": f"You are a security analyst. Provide concise summaries in {language}.",
                     },
                     {
                         "role": "user",
-                        "content": f"Summarize the following security scan results in {max_length} characters or less:\n\n{text}",
+                        "content": f"Summarize the following security scan results in {max_length} characters or less. Write in {language}:\n\n{text}",
                     },
                 ],
             )
@@ -108,6 +112,7 @@ class OpenAIProvider(BaseAIProvider):
     async def assess_risk(
         self,
         scan_results: dict[str, Any],
+        language: str = "English",
     ) -> dict[str, Any]:
         """Assess risks using GPT."""
         client = self._get_client()
@@ -126,6 +131,8 @@ Return a JSON object with the following structure:
     "attack_vectors": ["vector1", "vector2"]
 }}
 
+IMPORTANT: Write all text values (critical_findings, recommendations, attack_vectors) in {language}.
+
 Scan Results:
 {json.dumps(scan_results, indent=2, default=str)}"""
 
@@ -137,7 +144,7 @@ Scan Results:
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a security analyst. Return only valid JSON.",
+                        "content": f"You are a security analyst. Return only valid JSON. Write text content in {language}.",
                     },
                     {"role": "user", "content": prompt},
                 ],

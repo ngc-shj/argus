@@ -97,6 +97,10 @@ def format_scan_result(console: Console, result: ScanSession) -> None:
     if result.wayback_result:
         _format_wayback_results(console, result.wayback_result)
 
+    # AI Analysis Results
+    if result.ai_analysis:
+        _format_ai_results(console, result.ai_analysis)
+
     # Summary
     _format_summary(console, result)
 
@@ -868,6 +872,79 @@ def _format_wayback_results(console: Console, wayback) -> None:
         console.print(f"\n[yellow]Sensitive Parameters ({len(wayback.sensitive_params)}):[/yellow]")
         for param in wayback.sensitive_params[:5]:
             console.print(f"  - {param.name} (found {param.count} times)")
+
+
+def _format_ai_results(console: Console, ai_analysis: dict) -> None:
+    """Format AI analysis results."""
+    console.print()
+    console.print("[bold blue]AI Security Analysis[/bold blue]")
+
+    # Risk Score
+    risk_score = ai_analysis.get("risk_score", {})
+    if risk_score:
+        overall = risk_score.get("overall", 0)
+        score_color = "green" if overall < 30 else ("yellow" if overall < 60 else "red")
+
+        table = Table(title="Risk Scores", show_header=True)
+        table.add_column("Category", style="cyan")
+        table.add_column("Score", style="green")
+        table.add_column("Level")
+
+        def risk_level(score: int) -> str:
+            if score < 30:
+                return "[green]Low[/green]"
+            elif score < 60:
+                return "[yellow]Medium[/yellow]"
+            else:
+                return "[red]High[/red]"
+
+        table.add_row("Overall", f"[{score_color}]{overall}[/{score_color}]", risk_level(overall))
+        if risk_score.get("dns_security"):
+            table.add_row("DNS Security", str(risk_score["dns_security"]), risk_level(risk_score["dns_security"]))
+        if risk_score.get("network_exposure"):
+            table.add_row("Network Exposure", str(risk_score["network_exposure"]), risk_level(risk_score["network_exposure"]))
+        if risk_score.get("web_security"):
+            table.add_row("Web Security", str(risk_score["web_security"]), risk_level(risk_score["web_security"]))
+        if risk_score.get("infrastructure"):
+            table.add_row("Infrastructure", str(risk_score["infrastructure"]), risk_level(risk_score["infrastructure"]))
+
+        console.print(table)
+
+    # Executive Summary
+    if ai_analysis.get("executive_summary"):
+        console.print(
+            Panel(
+                ai_analysis["executive_summary"],
+                title="Executive Summary",
+                border_style="blue",
+            )
+        )
+
+    # Key Findings
+    key_findings = ai_analysis.get("key_findings", [])
+    if key_findings:
+        console.print("\n[bold]Key Findings:[/bold]")
+        for i, finding in enumerate(key_findings[:5], 1):
+            console.print(f"  {i}. {finding}")
+
+    # Attack Vectors
+    attack_vectors = ai_analysis.get("attack_vectors", [])
+    if attack_vectors:
+        console.print("\n[bold red]Potential Attack Vectors:[/bold red]")
+        for vector in attack_vectors[:5]:
+            console.print(f"  • {vector}")
+
+    # Recommendations
+    recommendations = ai_analysis.get("recommendations", [])
+    if recommendations:
+        console.print("\n[bold green]Recommendations:[/bold green]")
+        for i, rec in enumerate(recommendations[:5], 1):
+            console.print(f"  {i}. {rec}")
+
+    # Provider and model info
+    provider = ai_analysis.get("provider", "unknown")
+    model = ai_analysis.get("model_used", "unknown")
+    console.print(f"\n[dim]Analysis by: {provider} ({model})[/dim]")
 
 
 def _format_summary(console: Console, result: ScanSession) -> None:

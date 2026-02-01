@@ -40,4 +40,6 @@ Analyze the following reconnaissance scan results and provide a comprehensive se
 
 Focus on actionable insights. Be specific about risks and remediation steps.
 Analyze the actual data provided in the Scan Results section above.
+
+IMPORTANT: Provide your entire response in {language}.
 """
