@@ -20,12 +20,15 @@ class BaseAIProvider(IAIProvider, ABC):
         self,
         scan_results: dict[str, Any],
         prompt_template: str,
+        language: str = "English",
     ) -> str:
         """Run AI analysis on scan results."""
         ...
 
     @abstractmethod
-    async def summarize(self, text: str, max_length: int = 500) -> str:
+    async def summarize(
+        self, text: str, max_length: int = 500, language: str = "English"
+    ) -> str:
         """Generate a summary of the provided text."""
         ...
 
@@ -33,6 +36,7 @@ class BaseAIProvider(IAIProvider, ABC):
     async def assess_risk(
         self,
         scan_results: dict[str, Any],
+        language: str = "English",
     ) -> dict[str, Any]:
         """Assess security risks from scan results."""
         ...

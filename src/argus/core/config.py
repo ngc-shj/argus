@@ -62,6 +62,9 @@ class Settings(BaseSettings):
         default="anthropic"
     )
 
+    # AI Output Language (ISO 639-1 code: en, ja, etc.)
+    output_language: str = Field(default="en")
+
     def get_anthropic_key(self) -> str | None:
         """Get Anthropic API key value."""
         if self.anthropic_api_key:

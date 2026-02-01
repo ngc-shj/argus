@@ -9,6 +9,8 @@ Focus on:
 
 Keep the summary concise (under {max_length} characters).
 
+IMPORTANT: Write the summary in {language}.
+
 Analysis to summarize:
 {text}
 """

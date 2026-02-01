@@ -803,7 +803,10 @@ class ScanCoordinator:
         from argus.ai.analyzer import AIAnalyzer
 
         try:
-            analyzer = AIAnalyzer(provider=session.options.ai_provider)
+            analyzer = AIAnalyzer(
+                provider=session.options.ai_provider,
+                language=session.options.output_language,
+            )
             analysis = await analyzer.analyze_session(session)
             session.ai_analysis = analysis.model_dump()
         except Exception as e:

@@ -101,6 +101,14 @@ def scan(
         bool,
         typer.Option("--wayback", help="Extract URLs from Wayback Machine (slow)"),
     ] = False,
+    language: Annotated[
+        str,
+        typer.Option(
+            "--language",
+            "-l",
+            help="Output language for AI analysis (ISO code: en, ja, etc.)",
+        ),
+    ] = "en",
 ) -> None:
     """
     Scan a target for security reconnaissance.
@@ -165,6 +173,7 @@ def scan(
         wayback_scan_enabled=wayback,
         ai_analysis_enabled=analyze,
         ai_provider=ai_provider,  # type: ignore
+        output_language=language,
     )
 
     # Run scan
@@ -236,6 +245,7 @@ def config(
         table.add_row("Default AI Provider", settings.default_ai_provider)
         table.add_row("Ollama Host", settings.ollama_host)
         table.add_row("Ollama Model", settings.ollama_model)
+        table.add_row("Output Language", settings.output_language)
         table.add_row(
             "Anthropic API Key",
             "[green]Set[/green]" if settings.anthropic_api_key else "[red]Not set[/red]",

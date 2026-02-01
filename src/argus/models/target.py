@@ -205,6 +205,7 @@ class ScanOptions(BaseSchema):
     # AI options
     ai_analysis_enabled: bool = True
     ai_provider: Literal["anthropic", "openai", "ollama"] = "anthropic"
+    output_language: str = "en"  # ISO 639-1 code: en, ja, etc.
 
     # General options
     timeout_seconds: int = Field(default=30, ge=1, le=300)

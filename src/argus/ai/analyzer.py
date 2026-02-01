@@ -17,13 +17,29 @@ from argus.models.report import AIAnalysisResult, Finding, RiskScore, Severity
 class AIAnalyzer:
     """Orchestrates AI analysis of scan results."""
 
+    # Language code to full name mapping
+    LANGUAGE_MAP = {
+        "en": "English",
+        "ja": "Japanese",
+        "zh": "Chinese",
+        "ko": "Korean",
+        "es": "Spanish",
+        "fr": "French",
+        "de": "German",
+        "pt": "Portuguese",
+        "ru": "Russian",
+        "ar": "Arabic",
+    }
+
     def __init__(
         self,
         provider: Literal["anthropic", "openai", "ollama"] = "anthropic",
+        language: str = "en",
     ) -> None:
         self.logger = get_logger("ai_analyzer")
         self._provider_name = provider
         self._provider: BaseAIProvider | None = None
+        self._language = self.LANGUAGE_MAP.get(language, language)
 
     def _get_provider(self) -> BaseAIProvider:
         """Get or create the AI provider."""
@@ -57,13 +73,17 @@ class AIAnalyzer:
 
         try:
             # Get risk assessment
-            risk_data = await provider.assess_risk(results)
+            risk_data = await provider.assess_risk(results, language=self._language)
 
             # Get detailed analysis
-            analysis_text = await provider.analyze(results, RISK_ASSESSMENT_PROMPT)
+            analysis_text = await provider.analyze(
+                results, RISK_ASSESSMENT_PROMPT, language=self._language
+            )
 
             # Get summary
-            summary = await provider.summarize(analysis_text, max_length=500)
+            summary = await provider.summarize(
+                analysis_text, max_length=500, language=self._language
+            )
 
             # Build findings from analysis
             findings = self._extract_findings(risk_data)
