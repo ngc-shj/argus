@@ -321,7 +321,9 @@ document.querySelectorAll('section h2').forEach(header => {
 
     def _build_header(self, session: ScanSession, title: str) -> str:
         """Build report header."""
-        scan_date = session.started_at.strftime("%Y-%m-%d %H:%M:%S") if session.started_at else "N/A"
+        scan_date = (
+            session.started_at.strftime("%Y-%m-%d %H:%M:%S") if session.started_at else "N/A"
+        )
         duration = f"{session.duration_seconds:.2f}s" if session.duration_seconds else "N/A"
 
         return f"""<header>
@@ -365,7 +367,9 @@ document.querySelectorAll('section h2').forEach(header => {
             technologies = len(session.webtech_result.technologies)
 
         # Build cards
-        card_class = "critical" if critical_vulns > 0 else ("warning" if high_vulns > 0 else "success")
+        card_class = (
+            "critical" if critical_vulns > 0 else ("warning" if high_vulns > 0 else "success")
+        )
         cards.append(f"""<div class="summary-card {card_class}">
     <h3>Vulnerabilities</h3>
     <div class="value">{total_vulns}</div>
@@ -390,7 +394,7 @@ document.querySelectorAll('section h2').forEach(header => {
 </div>""")
 
         return f"""<div class="summary-grid">
-    {''.join(cards)}
+    {"".join(cards)}
 </div>"""
 
     def _build_sections(self, session: ScanSession) -> str:
@@ -445,7 +449,7 @@ document.querySelectorAll('section h2').forEach(header => {
         </tr>
     </thead>
     <tbody>
-        {''.join(rows) if rows else '<tr><td colspan="4" class="no-data">No DNS records found</td></tr>'}
+        {"".join(rows) if rows else '<tr><td colspan="4" class="no-data">No DNS records found</td></tr>'}
     </tbody>
 </table>"""
 
@@ -453,12 +457,14 @@ document.querySelectorAll('section h2').forEach(header => {
         if dns.subdomains:
             sub_items = []
             for sub in dns.subdomains[:30]:
-                ips = ", ".join(sub.resolved_ips[:3])
-                sub_items.append(f"<li><strong>{html.escape(sub.full_domain)}</strong> - {ips}</li>")
+                ips = ", ".join(html.escape(ip) for ip in sub.resolved_ips[:3])
+                sub_items.append(
+                    f"<li><strong>{html.escape(sub.full_domain)}</strong> - {ips}</li>"
+                )
             if len(dns.subdomains) > 30:
                 sub_items.append(f"<li>... and {len(dns.subdomains) - 30} more</li>")
             subdomain_list = f"""<h3>Discovered Subdomains ({len(dns.subdomains)})</h3>
-<ul>{''.join(sub_items)}</ul>"""
+<ul>{"".join(sub_items)}</ul>"""
 
         return f"""<section>
     <h2>DNS Records ({dns.total_records} records)</h2>
@@ -476,7 +482,9 @@ document.querySelectorAll('section h2').forEach(header => {
             if value:
                 if isinstance(value, list):
                     value = ", ".join(str(v) for v in value[:5])
-                rows.append(f"<tr><td><strong>{label}</strong></td><td>{html.escape(str(value))}</td></tr>")
+                rows.append(
+                    f"<tr><td><strong>{label}</strong></td><td>{html.escape(str(value))}</td></tr>"
+                )
 
         add_row("Domain", whois.domain_name)
         if whois.registrar:
@@ -495,7 +503,7 @@ document.querySelectorAll('section h2').forEach(header => {
     <div class="section-content">
         <table>
             <tbody>
-                {''.join(rows) if rows else '<tr><td colspan="2" class="no-data">No WHOIS information available</td></tr>'}
+                {"".join(rows) if rows else '<tr><td colspan="2" class="no-data">No WHOIS information available</td></tr>'}
             </tbody>
         </table>
     </div>
@@ -532,7 +540,7 @@ document.querySelectorAll('section h2').forEach(header => {
                 </tr>
             </thead>
             <tbody>
-                {''.join(rows) if rows else '<tr><td colspan="5" class="no-data">No open ports found</td></tr>'}
+                {"".join(rows) if rows else '<tr><td colspan="5" class="no-data">No open ports found</td></tr>'}
             </tbody>
         </table>
     </div>
@@ -546,7 +554,7 @@ document.querySelectorAll('section h2').forEach(header => {
             rows.append(f"""<tr>
     <td><strong>{html.escape(tech.name)}</strong></td>
     <td>{html.escape(categories)}</td>
-    <td>{html.escape(tech.version or '-')}</td>
+    <td>{html.escape(tech.version or "-")}</td>
     <td>{tech.confidence}%</td>
 </tr>""")
 
@@ -576,7 +584,7 @@ document.querySelectorAll('section h2').forEach(header => {
                 </tr>
             </thead>
             <tbody>
-                {''.join(rows) if rows else '<tr><td colspan="4" class="no-data">No technologies detected</td></tr>'}
+                {"".join(rows) if rows else '<tr><td colspan="4" class="no-data">No technologies detected</td></tr>'}
             </tbody>
         </table>
         {missing_headers}
@@ -609,7 +617,7 @@ document.querySelectorAll('section h2').forEach(header => {
                 </tr>
             </thead>
             <tbody>
-                {''.join(rows) if rows else '<tr><td colspan="4" class="no-data">No subdomains found</td></tr>'}
+                {"".join(rows) if rows else '<tr><td colspan="4" class="no-data">No subdomains found</td></tr>'}
             </tbody>
         </table>
     </div>
@@ -669,7 +677,7 @@ document.querySelectorAll('section h2').forEach(header => {
                 </tr>
             </thead>
             <tbody>
-                {''.join(vuln_rows)}
+                {"".join(vuln_rows)}
             </tbody>
         </table>
     </div>
@@ -687,7 +695,7 @@ document.querySelectorAll('section h2').forEach(header => {
     <h2>Vulnerabilities ({vuln.total_vulnerabilities} found)</h2>
     <div class="section-content">
         {summary}
-        {''.join(findings)}
+        {"".join(findings)}
     </div>
 </section>"""
 
@@ -713,7 +721,9 @@ document.querySelectorAll('section h2').forEach(header => {
                 headers_grade = html.escape(result.headers_result.grade)
 
             ssl_grade_class = f"grade-{ssl_grade[0].lower()}" if ssl_grade != "-" else ""
-            headers_grade_class = f"grade-{headers_grade[0].lower()}" if headers_grade != "-" else ""
+            headers_grade_class = (
+                f"grade-{headers_grade[0].lower()}" if headers_grade != "-" else ""
+            )
 
             ssl_cell = (
                 f'<span class="grade {ssl_grade_class}" style="width:2rem;height:2rem;font-size:0.875rem;">'
@@ -755,7 +765,7 @@ document.querySelectorAll('section h2').forEach(header => {
                 </tr>
             </thead>
             <tbody>
-                {''.join(rows) if rows else '<tr><td colspan="5" class="no-data">No subdomain scan results</td></tr>'}
+                {"".join(rows) if rows else '<tr><td colspan="5" class="no-data">No subdomain scan results</td></tr>'}
             </tbody>
         </table>
     </div>

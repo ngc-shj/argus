@@ -182,7 +182,10 @@ class AIAnalyzer:
                     lines.append(f"  High Risk Ports: {ports}")
 
             if result.error:
-                lines.append(f"  Error: {result.error}")
+                safe_error = result.error.replace("</scan_data>", "").replace("<scan_data>", "")[
+                    :500
+                ]
+                lines.append(f"  Error: {safe_error}")
 
             lines.append("")
 

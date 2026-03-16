@@ -806,6 +806,12 @@ class ScanCoordinator:
 
     async def _run_subdomain_scans(self, session: ScanSession, options: ScanOptions) -> None:
         """Collect discovered subdomains and run recursive scanning on each."""
+        if not options.crtsh_enabled and not options.subdomain_enum_extended:
+            self.logger.warning(
+                "subdomain_scan_no_discovery_sources",
+                hint="Enable crtsh or extended subdomain enumeration for subdomain discovery",
+            )
+
         candidates: dict[str, SubdomainCandidate] = {}
 
         # Collect from crtsh results
@@ -821,7 +827,9 @@ class ScanCoordinator:
         if session.subdomain_enum and session.subdomain_enum.get("subdomains"):
             base_domain = session.target.domain or ""
             for domain in session.subdomain_enum["subdomains"]:
-                if base_domain and not domain.endswith(base_domain):
+                if base_domain and not (
+                    domain == base_domain or domain.endswith("." + base_domain)
+                ):
                     continue
                 if domain not in candidates:
                     candidates[domain] = SubdomainCandidate(

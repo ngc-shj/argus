@@ -198,3 +198,8 @@ class TestValidateIPv6SSRF:
     def test_ipv6_loopback_rejected(self):
         with pytest.raises(ValidationError):
             ScanTarget(ip_address="::1")
+
+    def test_ipv4_mapped_all_hex_form_rejected(self):
+        """All-hex IPv4-mapped IPv6 address (::ffff:c0a8:0101 = 192.168.1.1)."""
+        with pytest.raises(ValueError):
+            ScanTarget(ip_address="::ffff:c0a8:101")

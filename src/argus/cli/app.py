@@ -143,8 +143,7 @@ def scan(
 
     console.print(
         Panel(
-            f"[bold blue]Argus Scan[/bold blue]\n"
-            f"Target: [green]{target}[/green]",
+            f"[bold blue]Argus Scan[/bold blue]\nTarget: [green]{target}[/green]",
             title="Starting Scan",
         )
     )
@@ -153,9 +152,22 @@ def scan(
     enabled_modules = []
     if full:
         enabled_modules = [
-            "dns", "whois", "rdap", "ports", "webtech", "crtsh", "vuln",
-            "ssl", "email", "security", "js", "headers", "discovery",
-            "favicon", "asn", "graphql"
+            "dns",
+            "whois",
+            "rdap",
+            "ports",
+            "webtech",
+            "crtsh",
+            "vuln",
+            "ssl",
+            "email",
+            "security",
+            "js",
+            "headers",
+            "discovery",
+            "favicon",
+            "asn",
+            "graphql",
         ]
     elif modules:
         enabled_modules = [m.strip().lower() for m in modules.split(",")]
@@ -174,41 +186,49 @@ def scan(
         enabled_modules.append("crtsh")
 
     try:
-        scan_target = ScanTarget(domain=target if "." in target else None,
-                                  ip_address=target if "." not in target or target.replace(".", "").isdigit() else None)
+        scan_target = ScanTarget(
+            domain=target if "." in target else None,
+            ip_address=target if "." not in target or target.replace(".", "").isdigit() else None,
+        )
     except Exception as e:
         console.print(f"[red]Invalid target: {e}[/red]")
         raise typer.Exit(1) from None
 
-    options = ScanOptions(
-        dns_enabled="dns" in enabled_modules,
-        whois_enabled="whois" in enabled_modules,
-        rdap_enabled="rdap" in enabled_modules,
-        port_scan_enabled="ports" in enabled_modules,
-        webtech_enabled="webtech" in enabled_modules,
-        crtsh_enabled="crtsh" in enabled_modules,
-        vuln_scan_enabled="vuln" in enabled_modules,
-        ssl_scan_enabled="ssl" in enabled_modules,
-        email_scan_enabled="email" in enabled_modules,
-        security_scan_enabled="security" in enabled_modules,
-        js_analysis_enabled="js" in enabled_modules,
-        headers_scan_enabled="headers" in enabled_modules,
-        discovery_scan_enabled="discovery" in enabled_modules,
-        favicon_scan_enabled="favicon" in enabled_modules,
-        asn_scan_enabled="asn" in enabled_modules,
-        graphql_scan_enabled="graphql" in enabled_modules,
-        takeover_scan_enabled=takeover_check,
-        subdomain_enum_extended=extended_subdomains,
-        kev_check_enabled=kev_check,
-        wayback_scan_enabled=wayback,
-        ai_analysis_enabled=analyze,
-        ai_provider=ai_provider,  # type: ignore
-        output_language=language,
-        subdomain_scan_enabled=scan_subdomains,
-        subdomain_modules=[m.strip() for m in subdomain_modules.split(",")] if subdomain_modules else ["dns", "ssl", "headers"],
-        max_subdomain_concurrency=max_subdomain_concurrency,
-        max_subdomains=max_subdomains,
-    )
+    try:
+        options = ScanOptions(
+            dns_enabled="dns" in enabled_modules,
+            whois_enabled="whois" in enabled_modules,
+            rdap_enabled="rdap" in enabled_modules,
+            port_scan_enabled="ports" in enabled_modules,
+            webtech_enabled="webtech" in enabled_modules,
+            crtsh_enabled="crtsh" in enabled_modules,
+            vuln_scan_enabled="vuln" in enabled_modules,
+            ssl_scan_enabled="ssl" in enabled_modules,
+            email_scan_enabled="email" in enabled_modules,
+            security_scan_enabled="security" in enabled_modules,
+            js_analysis_enabled="js" in enabled_modules,
+            headers_scan_enabled="headers" in enabled_modules,
+            discovery_scan_enabled="discovery" in enabled_modules,
+            favicon_scan_enabled="favicon" in enabled_modules,
+            asn_scan_enabled="asn" in enabled_modules,
+            graphql_scan_enabled="graphql" in enabled_modules,
+            takeover_scan_enabled=takeover_check,
+            subdomain_enum_extended=extended_subdomains,
+            kev_check_enabled=kev_check,
+            wayback_scan_enabled=wayback,
+            ai_analysis_enabled=analyze,
+            ai_provider=ai_provider,  # type: ignore
+            output_language=language,
+            subdomain_scan_enabled=scan_subdomains,
+            subdomain_modules=[m.strip() for m in subdomain_modules.split(",")]
+            if subdomain_modules
+            else ["dns", "ssl", "headers"],
+            max_subdomain_concurrency=max_subdomain_concurrency,
+            max_subdomains=max_subdomains,
+        )
+    except Exception as e:
+        console.print(f"[red]Invalid scan options: {e}[/red]")
+        raise typer.Exit(1) from None
 
     # Run scan
     coordinator = ScanCoordinator()
@@ -231,6 +251,7 @@ def scan(
     if output:
         if str(output).endswith(".html"):
             from argus.reports import HTMLReportGenerator
+
             generator = HTMLReportGenerator()
             generator.generate(result, output)
             console.print(f"[green]HTML report saved to {output}[/green]")
@@ -242,6 +263,7 @@ def scan(
     # Generate HTML report if requested
     if html_report:
         from argus.reports import HTMLReportGenerator
+
         generator = HTMLReportGenerator()
         generator.generate(result, html_report)
         console.print(f"[green]HTML report saved to {html_report}[/green]")

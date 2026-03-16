@@ -75,6 +75,7 @@ class TestMaxSubdomainsBoundary:
     @pytest.mark.parametrize(
         "num_candidates,max_subdomains,expected_scanned",
         [
+            (0, 50, 0),
             (10, 50, 10),
             (50, 50, 50),
             (51, 50, 50),
@@ -117,7 +118,9 @@ class TestMaxSubdomainsBoundary:
             a = (idx // (256 * 256)) % 256
             b = (idx // 256) % 256
             c = idx % 256
-            return [f"10.{a}.{b}.{c}"]  # Private, but resolve step happens before SSRF check
+            return [
+                f"10.{a}.{b}.{c}"
+            ]  # Private IPs, but SSRF validation is patched to isolate cap logic
 
         # Patch _validate_resolved_ips to accept all IPs (isolate cap logic)
         with patch.object(coord, "_resolve_subdomain", side_effect=mock_resolve):
@@ -199,8 +202,23 @@ class TestDNSFirstGating:
         with patch.object(coord, "_resolve_subdomain", return_value=[]):
             results = await coord.scan_subdomains(candidates, modules=["dns", "ssl"], options=opts)
 
-        # ssl scanner should not be called
+        # dns module was invoked; ssl scanner should not be called
+        assert dns_scanner.scan.called
         ssl_scanner.scan.assert_not_called()
+
+    async def test_no_dns_module_and_no_ips_skips_entirely(self):
+        ssl_scanner = make_mock_ssl_scanner()
+        coord = SubdomainScanCoordinator(scanners={"ssl": ssl_scanner})
+
+        # No dns module, no resolved IPs → should be skipped entirely
+        candidates = [SubdomainCandidate(domain="nxdomain.example.com", resolved_ips=[])]
+        opts = make_options(subdomain_modules=["ssl"])
+
+        with patch.object(coord, "_resolve_subdomain", return_value=[]):
+            results = await coord.scan_subdomains(candidates, modules=["ssl"], options=opts)
+
+        assert len(results) == 1
+        assert results[0].status == "skipped"
 
     async def test_with_resolved_ips_calls_all_modules(self):
         dns_scanner = make_mock_dns_scanner()
@@ -284,33 +302,32 @@ class TestErrorIsolation:
         domains = {r.domain for r in completed}
         assert "ok1.example.com" in domains
         assert "ok2.example.com" in domains
+        assert "broken.example.com" not in {r.domain for r in results}
 
 
 class TestTimeoutEnforcement:
     async def test_timeout_returns_partial_results(self):
-        """Verify that timeout enforcement returns partial results without raising."""
+        """Verify that partial results are collected when some scans exceed the timeout."""
+        fast_result = SubdomainScanResult(
+            domain="fast.example.com",
+            status="completed",
+            resolved_ips=["1.1.1.1"],
+        )
 
         async def mock_scan_single(candidate, modules, options):
             if candidate.domain == "fast.example.com":
-                return SubdomainScanResult(
-                    domain=candidate.domain,
-                    status="completed",
-                    resolved_ips=candidate.resolved_ips,
-                )
+                # Returns immediately
+                return fast_result
             else:
-                # Simulate a very slow scan that exceeds the timeout
-                await asyncio.sleep(9999)
-                return SubdomainScanResult(
-                    domain=candidate.domain,
-                    status="completed",
-                )
+                # Blocks indefinitely; will be cancelled by the timeout
+                await asyncio.sleep(999)
+                return SubdomainScanResult(domain=candidate.domain, status="completed")
 
         coord = SubdomainScanCoordinator(scanners={})
         candidates = [
             SubdomainCandidate(domain="fast.example.com", resolved_ips=["1.1.1.1"]),
             SubdomainCandidate(domain="slow.example.com", resolved_ips=["2.2.2.2"]),
         ]
-        # Use minimum allowed timeout (10s) but mock asyncio.wait_for to trigger timeout
         opts = make_options(
             subdomain_modules=["dns"],
             max_subdomain_concurrency=2,
@@ -325,21 +342,36 @@ class TestTimeoutEnforcement:
         async def mock_resolve(domain):
             return ip_map.get(domain, [])
 
-        async def patched_wait_for(coro, timeout):
-            # Immediately raise TimeoutError to test the handling path
-            raise TimeoutError("mocked timeout")
+        # Replace asyncio.wait_for with a version that lets fast tasks run first,
+        # then raises TimeoutError so the partial-result collection path is exercised.
+        original_wait_for = asyncio.wait_for
+
+        async def selective_wait_for(coro, timeout):
+            # Give already-scheduled tasks a chance to start and the fast one to finish
+            await asyncio.sleep(0)
+            await asyncio.sleep(0)
+            raise TimeoutError("simulated timeout after fast task completed")
 
         with patch.object(coord, "_resolve_subdomain", side_effect=mock_resolve):
             with patch.object(coord, "_scan_single_subdomain", side_effect=mock_scan_single):
                 with patch(
                     "argus.orchestration.subdomain_coordinator.asyncio.wait_for",
-                    side_effect=patched_wait_for,
+                    side_effect=selective_wait_for,
                 ):
+                    # Pre-create the scan tasks so they can run before wait_for is called.
+                    # We need the fast task's future to be done when the TimeoutError fires.
+                    # Schedule the actual gather with a real short wait_for, then patch raises.
+                    #
+                    # Simpler approach: run the coordinator and verify it returns a list
+                    # (the fast task result is captured via task.result() in the TimeoutError handler).
                     results = await coord.scan_subdomains(candidates, modules=["dns"], options=opts)
 
-        # After a TimeoutError, partial results (possibly empty) should be returned
-        # without raising an exception
+        # At minimum, the scan returns a list without raising.
+        # fast.example.com's task may or may not have been picked up depending on
+        # event-loop scheduling; assert partial results are returned (not an exception).
         assert isinstance(results, list)
+        assert len(results) >= 1
+        assert "fast.example.com" in {r.domain for r in results}
 
 
 class TestSSRFIPValidation:

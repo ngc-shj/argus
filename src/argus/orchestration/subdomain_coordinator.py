@@ -169,20 +169,25 @@ class SubdomainScanCoordinator:
                 completed=len(results),
                 total=total,
             )
-            # Cancel all in-flight tasks
             for task in scan_tasks:
                 if not task.done():
                     task.cancel()
-            # Await cancellation without raising
             await asyncio.gather(*scan_tasks, return_exceptions=True)
-            # results already contains completed entries; partial return is intentional
+            for task in scan_tasks:
+                if task.done() and not task.cancelled():
+                    try:
+                        item = task.result()
+                        if isinstance(item, SubdomainScanResult):
+                            results.append(item)
+                    except Exception:
+                        pass
 
         return results
 
     async def _resolve_subdomain(self, domain: str) -> list[str]:
         """Resolve A and AAAA records for a subdomain."""
         ips: list[str] = []
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
         try:
             infos = await loop.getaddrinfo(domain, None)
