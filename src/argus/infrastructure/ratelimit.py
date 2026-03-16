@@ -1,6 +1,5 @@
 """Rate limiting implementation."""
 
-import asyncio
 from typing import Any
 
 from aiolimiter import AsyncLimiter
@@ -47,6 +46,7 @@ class MultiRateLimiter:
             "dns": RateLimiter(settings.dns_queries_per_second),
             "whois": RateLimiter(settings.whois_queries_per_minute, 60.0),
             "ports": RateLimiter(settings.port_scans_per_second),
+            "http": RateLimiter(settings.http_requests_per_second),
         }
 
     def get(self, name: str) -> RateLimiter | None:

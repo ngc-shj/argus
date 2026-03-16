@@ -415,6 +415,9 @@ document.querySelectorAll('section h2').forEach(header => {
         if session.vuln_result:
             sections.append(self._build_vuln_section(session.vuln_result))
 
+        if session.subdomain_scan_results:
+            sections.append(self._build_subdomain_section(session))
+
         return "\n".join(sections)
 
     def _build_dns_section(self, dns) -> str:
@@ -685,6 +688,76 @@ document.querySelectorAll('section h2').forEach(header => {
     <div class="section-content">
         {summary}
         {''.join(findings)}
+    </div>
+</section>"""
+
+    def _build_subdomain_section(self, session: ScanSession) -> str:
+        """Build subdomain scan results section."""
+        results = session.subdomain_scan_results or []
+        rows = []
+        for result in results:
+            domain = html.escape(result.domain)
+            status = html.escape(result.status)
+
+            open_ports = "-"
+            if result.port_result:
+                count = result.port_result.total_open
+                open_ports = str(count)
+
+            ssl_grade = "-"
+            if result.ssl_result and result.ssl_result.grade:
+                ssl_grade = html.escape(result.ssl_result.grade)
+
+            headers_grade = "-"
+            if result.headers_result and result.headers_result.grade:
+                headers_grade = html.escape(result.headers_result.grade)
+
+            ssl_grade_class = f"grade-{ssl_grade[0].lower()}" if ssl_grade != "-" else ""
+            headers_grade_class = f"grade-{headers_grade[0].lower()}" if headers_grade != "-" else ""
+
+            ssl_cell = (
+                f'<span class="grade {ssl_grade_class}" style="width:2rem;height:2rem;font-size:0.875rem;">'
+                f"{ssl_grade}</span>"
+                if ssl_grade != "-"
+                else "-"
+            )
+            headers_cell = (
+                f'<span class="grade {headers_grade_class}" style="width:2rem;height:2rem;font-size:0.875rem;">'
+                f"{headers_grade}</span>"
+                if headers_grade != "-"
+                else "-"
+            )
+
+            status_class = "badge-low" if result.status == "completed" else "badge-high"
+            rows.append(f"""<tr>
+    <td><strong>{domain}</strong></td>
+    <td><span class="badge {status_class}">{status}</span></td>
+    <td>{open_ports}</td>
+    <td>{ssl_cell}</td>
+    <td>{headers_cell}</td>
+</tr>""")
+
+        total = len(results)
+        completed = sum(1 for r in results if r.status == "completed")
+        failed = sum(1 for r in results if r.status == "failed")
+
+        return f"""<section>
+    <h2>Subdomain Scan Results ({total} subdomains, {completed} completed, {failed} failed)</h2>
+    <div class="section-content">
+        <table>
+            <thead>
+                <tr>
+                    <th>Subdomain</th>
+                    <th>Status</th>
+                    <th>Open Ports</th>
+                    <th>SSL Grade</th>
+                    <th>Headers Grade</th>
+                </tr>
+            </thead>
+            <tbody>
+                {''.join(rows) if rows else '<tr><td colspan="5" class="no-data">No subdomain scan results</td></tr>'}
+            </tbody>
+        </table>
     </div>
 </section>"""
 

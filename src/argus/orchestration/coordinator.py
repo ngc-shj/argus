@@ -27,6 +27,8 @@ from argus.scanners.favicon import FaviconScanner
 from argus.scanners.asn import ASNScanner
 from argus.scanners.wayback import WaybackScanner
 from argus.scanners.graphql import GraphQLScanner
+from argus.orchestration.subdomain_coordinator import SubdomainScanCoordinator
+from argus.models.subdomain_scan import SubdomainCandidate
 
 
 class ScanCoordinator:
@@ -99,6 +101,10 @@ class ScanCoordinator:
 
         # Run post-processing scans that depend on other results
         await self._run_post_scans(session, options)
+
+        # Run subdomain scanning if enabled
+        if options.subdomain_scan_enabled:
+            await self._run_subdomain_scans(session, options)
 
         # Run AI analysis if enabled
         if options.ai_analysis_enabled:
@@ -797,6 +803,68 @@ class ScanCoordinator:
             session.errors.append(f"subdomain_enum: {e}")
         finally:
             progress.completed_at = datetime.utcnow()
+
+    async def _run_subdomain_scans(self, session: ScanSession, options: ScanOptions) -> None:
+        """Collect discovered subdomains and run recursive scanning on each."""
+        candidates: dict[str, SubdomainCandidate] = {}
+
+        # Collect from crtsh results
+        if session.crtsh_result and session.crtsh_result.discovered_subdomains:
+            for sub in session.crtsh_result.discovered_subdomains:
+                candidates[sub.full_domain] = SubdomainCandidate(
+                    domain=sub.full_domain,
+                    cert_count=len(sub.certificate_ids),
+                    source="crtsh",
+                )
+
+        # Collect from subdomain enumeration results (crtsh entry takes precedence)
+        if session.subdomain_enum and session.subdomain_enum.get("subdomains"):
+            base_domain = session.target.domain or ""
+            for domain in session.subdomain_enum["subdomains"]:
+                if base_domain and not domain.endswith(base_domain):
+                    continue
+                if domain not in candidates:
+                    candidates[domain] = SubdomainCandidate(
+                        domain=domain,
+                        cert_count=0,
+                        source="subdomain_enum",
+                    )
+
+        candidate_list = list(candidates.values())
+
+        if not candidate_list:
+            self.logger.warning(
+                "subdomain_scanning_enabled_but_no_subdomains_discovered",
+                target=session.target.identifier,
+            )
+            return
+
+        self.logger.info(
+            "subdomain_scan_phase_started",
+            target=session.target.identifier,
+            candidates=len(candidate_list),
+            modules=options.subdomain_modules,
+        )
+
+        coordinator = SubdomainScanCoordinator()
+        results = await coordinator.scan_subdomains(
+            candidates=candidate_list,
+            modules=options.subdomain_modules,
+            options=options,
+        )
+        session.subdomain_scan_results = results
+
+        completed = sum(1 for r in results if r.status == "completed")
+        failed = sum(1 for r in results if r.status == "failed")
+        skipped = sum(1 for r in results if r.status == "skipped")
+        self.logger.info(
+            "subdomain_scan_phase_completed",
+            target=session.target.identifier,
+            total=len(results),
+            completed=completed,
+            failed=failed,
+            skipped=skipped,
+        )
 
     async def _run_ai_analysis(self, session: ScanSession) -> None:
         """Run AI analysis on scan results."""

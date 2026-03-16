@@ -109,6 +109,25 @@ def scan(
             help="Output language for AI analysis (ISO code: en, ja, etc.)",
         ),
     ] = "en",
+    scan_subdomains: Annotated[
+        bool,
+        typer.Option("--scan-subdomains", help="Scan discovered subdomains with selected modules"),
+    ] = False,
+    subdomain_modules: Annotated[
+        Optional[str],
+        typer.Option(
+            "--subdomain-modules",
+            help="Modules for subdomain scanning (comma-separated: dns,ssl,headers,ports,webtech,security,discovery,graphql,favicon)",
+        ),
+    ] = None,
+    max_subdomain_concurrency: Annotated[
+        int,
+        typer.Option("--max-subdomain-concurrency", help="Max parallel subdomain scans (1-20)"),
+    ] = 5,
+    max_subdomains: Annotated[
+        int,
+        typer.Option("--max-subdomains", help="Max subdomains to scan (1-200)"),
+    ] = 50,
 ) -> None:
     """
     Scan a target for security reconnaissance.
@@ -150,6 +169,10 @@ def scan(
         if "ssl" not in enabled_modules:
             enabled_modules.append("ssl")
 
+    # Ensure crtsh module is included when subdomain scanning is enabled
+    if scan_subdomains and "crtsh" not in enabled_modules:
+        enabled_modules.append("crtsh")
+
     try:
         scan_target = ScanTarget(domain=target if "." in target else None,
                                   ip_address=target if "." not in target or target.replace(".", "").isdigit() else None)
@@ -181,6 +204,10 @@ def scan(
         ai_analysis_enabled=analyze,
         ai_provider=ai_provider,  # type: ignore
         output_language=language,
+        subdomain_scan_enabled=scan_subdomains,
+        subdomain_modules=[m.strip() for m in subdomain_modules.split(",")] if subdomain_modules else ["dns", "ssl", "headers"],
+        max_subdomain_concurrency=max_subdomain_concurrency,
+        max_subdomains=max_subdomains,
     )
 
     # Run scan

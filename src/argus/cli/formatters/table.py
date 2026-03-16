@@ -97,6 +97,10 @@ def format_scan_result(console: Console, result: ScanSession) -> None:
     if result.wayback_result:
         _format_wayback_results(console, result.wayback_result)
 
+    # Subdomain Scan Results
+    if result.subdomain_scan_results:
+        _format_subdomain_scan_results(console, result.subdomain_scan_results)
+
     # AI Analysis Results
     if result.ai_analysis:
         _format_ai_results(console, result.ai_analysis)
@@ -872,6 +876,46 @@ def _format_wayback_results(console: Console, wayback) -> None:
         console.print(f"\n[yellow]Sensitive Parameters ({len(wayback.sensitive_params)}):[/yellow]")
         for param in wayback.sensitive_params[:5]:
             console.print(f"  - {param.name} (found {param.count} times)")
+
+
+def _format_subdomain_scan_results(console: Console, results: list) -> None:
+    """Format subdomain scan results summary table."""
+    n = len(results)
+    table = Table(title=f"Subdomain Scan Results ({n} scanned)", show_header=True)
+    table.add_column("Subdomain", style="cyan")
+    table.add_column("Status")
+    table.add_column("Open Ports")
+    table.add_column("SSL Grade")
+    table.add_column("Headers Grade")
+
+    status_styles = {
+        "completed": "green",
+        "failed": "red",
+        "skipped": "yellow",
+        "timeout": "orange1",
+    }
+
+    display_results = results[:30]
+    for r in display_results:
+        style = status_styles.get(r.status, "white")
+        status_str = f"[{style}]{r.status}[/{style}]"
+
+        open_ports = str(len(r.port_result.open_ports)) if r.port_result else "N/A"
+
+        ssl_grade = "N/A"
+        if r.ssl_result and r.ssl_result.ssl_enabled and r.ssl_result.grade:
+            ssl_grade = r.ssl_result.grade
+
+        headers_grade = "N/A"
+        if r.headers_result and r.headers_result.grade:
+            headers_grade = r.headers_result.grade
+
+        table.add_row(r.domain, status_str, open_ports, ssl_grade, headers_grade)
+
+    if n > 30:
+        table.add_row(f"... ({n - 30} more)", "", "", "", "")
+
+    console.print(table)
 
 
 def _format_ai_results(console: Console, ai_analysis: dict) -> None:
