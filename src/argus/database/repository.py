@@ -1,14 +1,20 @@
 """Repository layer for database operations."""
 
-from datetime import datetime
+import json
 from uuid import UUID
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from argus.core.logging import get_logger
 from argus.database.models import ScanRecord
-from argus.models import ScanSession, ScanTarget, ScanOptions
+from argus.models import ScanOptions, ScanSession, ScanTarget
 from argus.models.base import ScanStatus
+
+logger = get_logger("repository")
+
+_BLOB_WARN_BYTES = 10 * 1024 * 1024  # 10MB
+_BLOB_LIMIT_BYTES = 50 * 1024 * 1024  # 50MB
 
 
 class ScanRepository:
@@ -37,9 +43,7 @@ class ScanRepository:
 
     async def get_by_id(self, scan_id: UUID) -> ScanRecord | None:
         """Get a scan record by ID."""
-        result = await self.session.execute(
-            select(ScanRecord).where(ScanRecord.id == scan_id)
-        )
+        result = await self.session.execute(select(ScanRecord).where(ScanRecord.id == scan_id))
         return result.scalar_one_or_none()
 
     async def update(self, record: ScanRecord) -> ScanRecord:
@@ -60,7 +64,17 @@ class ScanRepository:
         record.errors = session.errors
 
         # Store full results as JSON
-        record.results = session.to_json_dict()
+        results_dict = session.to_json_dict()
+        results_blob = json.dumps(results_dict, default=str)
+        blob_size = len(results_blob.encode("utf-8"))
+
+        if blob_size > _BLOB_LIMIT_BYTES:
+            raise ValueError("Scan results exceed 50MB size limit")
+        if blob_size > _BLOB_WARN_BYTES:
+            size_mb = blob_size / (1024 * 1024)
+            logger.warning("Scan results blob size exceeds 10MB (%.1fMB)", size_mb)
+
+        record.results_json = results_blob
 
         self.session.add(record)
         await self.session.flush()

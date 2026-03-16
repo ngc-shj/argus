@@ -4,10 +4,10 @@ from datetime import datetime
 from typing import Literal
 
 from argus.ai.base import BaseAIProvider
-from argus.ai.providers.anthropic import AnthropicProvider
-from argus.ai.providers.openai import OpenAIProvider
-from argus.ai.providers.ollama import OllamaProvider
 from argus.ai.prompts.risk_assessment import RISK_ASSESSMENT_PROMPT
+from argus.ai.providers.anthropic import AnthropicProvider
+from argus.ai.providers.ollama import OllamaProvider
+from argus.ai.providers.openai import OpenAIProvider
 from argus.core.exceptions import AIProviderError
 from argus.core.logging import get_logger
 from argus.models import ScanSession
@@ -76,9 +76,9 @@ class AIAnalyzer:
             risk_data = await provider.assess_risk(results, language=self._language)
 
             # Get detailed analysis
-            analysis_text = await provider.analyze(
-                results, RISK_ASSESSMENT_PROMPT, language=self._language
-            )
+            subdomain_data = self._build_subdomain_scan_data(session)
+            prompt = RISK_ASSESSMENT_PROMPT.replace("{subdomain_scan_data}", subdomain_data)
+            analysis_text = await provider.analyze(results, prompt, language=self._language)
 
             # Get summary
             summary = await provider.summarize(
@@ -128,6 +128,106 @@ class AIAnalyzer:
             )
             raise
 
+    def _build_subdomain_scan_data(self, session: ScanSession) -> str:
+        """Build subdomain scan summary for AI prompt with token limit protection."""
+        results = session.subdomain_scan_results
+        if not results:
+            return "No subdomain scan data available."
+
+        total = len(results)
+        completed = sum(1 for r in results if r.status == "completed")
+        failed = sum(1 for r in results if r.status == "failed")
+
+        lines = [
+            f"Total subdomains scanned: {total} (completed: {completed}, failed: {failed})",
+            "",
+        ]
+
+        # Full detail for up to 5 subdomains
+        detail_results = results[:5]
+        for result in detail_results:
+            lines.append(f"Subdomain: {result.domain}")
+            lines.append(f"  Status: {result.status}")
+
+            if result.resolved_ips:
+                lines.append(f"  Resolved IPs: {', '.join(result.resolved_ips[:3])}")
+
+            if result.ssl_result:
+                ssl = result.ssl_result
+                lines.append(f"  SSL Grade: {ssl.grade or 'N/A'}")
+                lines.append(f"  SSL Enabled: {ssl.ssl_enabled}")
+                if ssl.certificate and ssl.certificate.days_until_expiry is not None:
+                    lines.append(f"  Cert Days Until Expiry: {ssl.certificate.days_until_expiry}")
+                if ssl.vulnerabilities:
+                    critical_high = [
+                        v.name for v in ssl.vulnerabilities if v.severity in ("critical", "high")
+                    ]
+                    if critical_high:
+                        issues = ", ".join(critical_high[:3])
+                        lines.append(f"  SSL Issues (critical/high): {issues}")
+
+            if result.headers_result:
+                hdr = result.headers_result
+                lines.append(f"  Headers Grade: {hdr.grade or 'N/A'}")
+                lines.append(f"  Headers Score: {hdr.score}")
+                if hdr.missing_headers:
+                    missing = [h.header_name for h in hdr.missing_headers[:5]]
+                    lines.append(f"  Missing Headers: {', '.join(missing)}")
+
+            if result.port_result:
+                lines.append(f"  Open Ports: {result.port_result.total_open}")
+                high_risk = result.port_result.high_risk_ports
+                if high_risk:
+                    ports = ", ".join(str(p.port) for p in high_risk[:5])
+                    lines.append(f"  High Risk Ports: {ports}")
+
+            if result.error:
+                safe_error = result.error.replace("</scan_data>", "").replace("<scan_data>", "")[
+                    :500
+                ]
+                lines.append(f"  Error: {safe_error}")
+
+            lines.append("")
+
+        # Summary statistics for remaining subdomains
+        remaining = results[5:]
+        if remaining:
+            ssl_grades: dict[str, int] = {}
+            headers_grades: dict[str, int] = {}
+            total_open_ports = 0
+            ssl_issues_count = 0
+
+            for r in remaining:
+                if r.ssl_result and r.ssl_result.grade:
+                    grade = r.ssl_result.grade
+                    ssl_grades[grade] = ssl_grades.get(grade, 0) + 1
+                if r.headers_result and r.headers_result.grade:
+                    grade = r.headers_result.grade
+                    headers_grades[grade] = headers_grades.get(grade, 0) + 1
+                if r.port_result:
+                    total_open_ports += r.port_result.total_open
+                if r.ssl_result:
+                    ssl_issues_count += len(
+                        [
+                            v
+                            for v in r.ssl_result.vulnerabilities
+                            if v.severity in ("critical", "high")
+                        ]
+                    )
+
+            lines.append(f"Remaining {len(remaining)} subdomains (summary only):")
+            if ssl_grades:
+                grade_summary = ", ".join(f"{g}: {c}" for g, c in sorted(ssl_grades.items()))
+                lines.append(f"  SSL Grades: {grade_summary}")
+            if headers_grades:
+                grade_summary = ", ".join(f"{g}: {c}" for g, c in sorted(headers_grades.items()))
+                lines.append(f"  Headers Grades: {grade_summary}")
+            lines.append(f"  Total Open Ports: {total_open_ports}")
+            if ssl_issues_count:
+                lines.append(f"  SSL Critical/High Issues: {ssl_issues_count}")
+
+        return "\n".join(lines)
+
     def _build_results_dict(self, session: ScanSession) -> dict:
         """Build results dictionary from session."""
         results = {}
@@ -163,9 +263,7 @@ class AIAnalyzer:
             results["vulnerabilities"] = session.vuln_result.model_dump(mode="json")
 
         if session.crtsh_result:
-            results["certificate_transparency"] = session.crtsh_result.model_dump(
-                mode="json"
-            )
+            results["certificate_transparency"] = session.crtsh_result.model_dump(mode="json")
 
         if session.discovery_result:
             results["discovery"] = session.discovery_result.model_dump(mode="json")

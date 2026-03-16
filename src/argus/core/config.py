@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     dns_queries_per_second: int = Field(default=50, ge=1, le=500)
     whois_queries_per_minute: int = Field(default=10, ge=1, le=60)
     port_scans_per_second: int = Field(default=100, ge=1, le=1000)
+    http_requests_per_second: int = Field(default=20, ge=1, le=200)
 
     # Logging
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(

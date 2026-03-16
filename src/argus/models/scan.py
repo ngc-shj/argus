@@ -22,6 +22,7 @@ from argus.models.favicon import FaviconResult
 from argus.models.asn import ASNResult
 from argus.models.wayback import WaybackResult
 from argus.models.graphql import GraphQLResult
+from argus.models.subdomain_scan import SubdomainScanResult
 
 
 class ModuleProgress(BaseSchema):
@@ -73,6 +74,9 @@ class ScanSession(BaseSchema):
     takeover_results: list[dict] | None = None
     js_analysis: dict | None = None
     subdomain_enum: dict | None = None
+
+    # Subdomain recursive scan results
+    subdomain_scan_results: list[SubdomainScanResult] | None = None
 
     # AI analysis (defined in report.py, referenced here)
     ai_analysis: dict | None = None

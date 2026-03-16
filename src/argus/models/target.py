@@ -7,23 +7,24 @@ from typing import Literal
 from pydantic import Field, field_validator, model_validator
 
 from argus.models.base import BaseSchema
+from argus.models.subdomain_scan import ALLOWED_SUBDOMAIN_MODULES
 
 # SSRF protection: blocked IP ranges
 BLOCKED_IP_RANGES = [
-    IPv4Network("0.0.0.0/8"),       # Current network
-    IPv4Network("10.0.0.0/8"),      # Private (Class A)
-    IPv4Network("127.0.0.0/8"),     # Loopback
+    IPv4Network("0.0.0.0/8"),  # Current network
+    IPv4Network("10.0.0.0/8"),  # Private (Class A)
+    IPv4Network("127.0.0.0/8"),  # Loopback
     IPv4Network("169.254.0.0/16"),  # Link-local (includes cloud metadata)
-    IPv4Network("172.16.0.0/12"),   # Private (Class B)
+    IPv4Network("172.16.0.0/12"),  # Private (Class B)
     IPv4Network("192.168.0.0/16"),  # Private (Class C)
-    IPv4Network("224.0.0.0/4"),     # Multicast
-    IPv4Network("240.0.0.0/4"),     # Reserved
+    IPv4Network("224.0.0.0/4"),  # Multicast
+    IPv4Network("240.0.0.0/4"),  # Reserved
 ]
 
 # Cloud metadata endpoints (explicit block)
 CLOUD_METADATA_IPS = [
     "169.254.169.254",  # AWS, GCP, Azure metadata
-    "169.254.170.2",    # AWS ECS metadata
+    "169.254.170.2",  # AWS ECS metadata
     "100.100.100.200",  # Alibaba Cloud metadata
 ]
 
@@ -118,6 +119,30 @@ class ScanTarget(BaseSchema):
                     if ip in network:
                         raise ValueError(f"Cannot scan blocked IP range: {v}")
 
+            elif isinstance(ip, IPv6Address):
+                if ip.is_link_local:
+                    raise ValueError(f"Cannot scan link-local IP: {v}")
+
+                if ip.is_multicast:
+                    raise ValueError(f"Cannot scan multicast IP: {v}")
+
+                if ip.is_unspecified:
+                    raise ValueError(f"Cannot scan unspecified IP: {v}")
+
+                if ip.ipv4_mapped is not None:
+                    mapped = ip.ipv4_mapped
+                    if mapped.is_link_local:
+                        raise ValueError(f"Cannot scan link-local IP: {v}")
+                    if mapped.is_multicast:
+                        raise ValueError(f"Cannot scan multicast IP: {v}")
+                    if mapped.is_unspecified:
+                        raise ValueError(f"Cannot scan unspecified IP: {v}")
+                    if str(mapped) in CLOUD_METADATA_IPS:
+                        raise ValueError(f"Cannot scan cloud metadata IP: {v}")
+                    for network in BLOCKED_IP_RANGES:
+                        if mapped in network:
+                            raise ValueError(f"Cannot scan blocked IP range: {v}")
+
             return str(ip)
         except ValueError as e:
             raise ValueError(f"Invalid IP address: {v}") from e
@@ -140,9 +165,7 @@ class ScanOptions(BaseSchema):
     # DNS options
     dns_enabled: bool = True
     dns_subdomain_enum: bool = True
-    dns_record_types: list[str] = Field(
-        default=["A", "AAAA", "MX", "NS", "TXT", "CNAME", "SOA"]
-    )
+    dns_record_types: list[str] = Field(default=["A", "AAAA", "MX", "NS", "TXT", "CNAME", "SOA"])
     dns_wordlist: Literal["small", "medium", "large"] = "small"
 
     # WHOIS/RDAP options
@@ -202,6 +225,13 @@ class ScanOptions(BaseSchema):
     # GraphQL introspection
     graphql_scan_enabled: bool = True
 
+    # Subdomain recursive scan options
+    subdomain_scan_enabled: bool = False
+    subdomain_modules: list[str] = Field(default=["dns", "ssl", "headers"])
+    max_subdomain_concurrency: int = Field(default=5, ge=1, le=20)
+    subdomain_scan_timeout: int = Field(default=300, ge=10, le=3600)
+    max_subdomains: int = Field(default=50, ge=1, le=200)
+
     # AI options
     ai_analysis_enabled: bool = True
     ai_provider: Literal["anthropic", "openai", "ollama"] = "anthropic"
@@ -217,4 +247,14 @@ class ScanOptions(BaseSchema):
         for port in v:
             if not 1 <= port <= 65535:
                 raise ValueError(f"Invalid port number: {port}")
+        return v
+
+    @field_validator("subdomain_modules")
+    @classmethod
+    def validate_subdomain_modules(cls, v: list[str]) -> list[str]:
+        for module in v:
+            if module not in ALLOWED_SUBDOMAIN_MODULES:
+                raise ValueError(
+                    f"Unknown subdomain module: {module!r}. Allowed: {ALLOWED_SUBDOMAIN_MODULES}"
+                )
         return v

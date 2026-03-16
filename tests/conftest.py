@@ -21,3 +21,16 @@ def sample_options() -> ScanOptions:
         webtech_enabled=False,
         ai_analysis_enabled=False,
     )
+
+
+@pytest.fixture
+def subdomain_scan_options() -> ScanOptions:
+    """Scan options with subdomain scanning enabled for testing."""
+    return ScanOptions(
+        subdomain_scan_enabled=True,
+        subdomain_modules=["dns", "ssl"],
+        max_subdomain_concurrency=2,
+        subdomain_scan_timeout=10,
+        max_subdomains=5,
+        ai_analysis_enabled=False,
+    )
